@@ -190,9 +190,14 @@ main input {
   background-color: var(--background-color);
 }
 
+main select{
+  border-radius: 0.25rem;
+}
+
 main input:hover {
   border: 1px solid var(--text-color);
 }
+
 
 main blockquote {
   font-style: italic;
