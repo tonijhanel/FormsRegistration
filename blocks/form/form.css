@@ -47,6 +47,7 @@
     --form-width: 100%;
     --form-select-first_background: green;
     --form-box-shadow: #ebebeb;
+    --form-input-font-weight: 700;
 
 }
 
@@ -135,6 +136,14 @@ main .form fieldset legend {
     width: 100%;
     padding: var(--form-fieldset-legend-padding);
     margin-bottom: 10px;
+}
+
+main .form input{
+    font-weight: var(--form-input-font-weight);
+}
+
+main .form select{
+    font-weight: var(--form-input-font-weight);
 }
 
 main .innovate form > fieldset > legend {
