@@ -14,7 +14,7 @@ function loadScript(url) {
 }
 
 export async function transformCaptchaDOM(formDef, form) {
-  // SITE_KEY = formDef.find(field => field.Name === 'googleRecaptcha')?.Value;
+  SITE_KEY = formDef.find(field => field.Name === 'googleRecaptcha')?.Value;
   const button = form.querySelector('button[type="submit"]');
   if (SITE_KEY && button) {
     const obs = new IntersectionObserver((entries) => {
@@ -37,8 +37,10 @@ export async function transformCaptchaRequest(request) {
       grecaptcha.ready(() => {
         grecaptcha.execute(SITE_KEY, { action: 'submit' }).then(async (token) => {
           const newbody = {
-            data: JSON.parse(body).data,
-            token,
+            data : { 
+            ...JSON.parse(body).data,
+            'g-recaptcha-response' : token,
+            }
           };
           resolve({
             body: JSON.stringify(newbody),
