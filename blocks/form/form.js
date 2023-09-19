@@ -1,9 +1,17 @@
-import { sampleRUM } from '../../scripts/lib-franklin.js';
-import decorateFieldset from './fieldset.js';
-
 function generateUnique() {
   return new Date().valueOf() + Math.random();
 }
+
+const formatFns = await (async function imports() {
+  try {
+    const formatters = await import('./formatting.js');
+    return formatters.default;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.log('Formatting library not found. Formatting will not be supported');
+  }
+  return {};
+}());
 
 function constructPayload(form) {
   const payload = { __id__: generateUnique() };
@@ -27,26 +35,28 @@ async function submissionFailure(error, form) {
   form.querySelector('button[type="submit"]').disabled = false;
 }
 
-async function prepareRequest(form) {
+async function prepareRequest(form, transformer) {
   const { payload } = constructPayload(form);
   const headers = {
     'Content-Type': 'application/json',
   };
   const body = JSON.stringify({ data: payload });
   const url = form.dataset.action;
+  if (typeof transformer === 'function') {
+    return transformer({ headers, body, url }, form);
+  }
   return { headers, body, url };
 }
 
-async function submitForm(form) {
+async function submitForm(form, transformer) {
   try {
-    const { headers, body, url } = await prepareRequest(form);
+    const { headers, body, url } = await prepareRequest(form, transformer);
     const response = await fetch(url, {
       method: 'POST',
       headers,
       body,
     });
     if (response.ok) {
-      sampleRUM('form:submit');
       window.location.href = form.dataset?.redirect || 'thankyou';
     } else {
       const error = await response.text();
@@ -57,10 +67,10 @@ async function submitForm(form) {
   }
 }
 
-async function handleSubmit(form) {
+async function handleSubmit(form, transformer) {
   if (form.getAttribute('data-submitting') !== 'true') {
     form.setAttribute('data-submitting', 'true');
-    await submitForm(form);
+    await submitForm(form, transformer);
   }
 }
 
@@ -74,7 +84,7 @@ const constraintsDef = Object.entries({
   'email|text': [['Max', 'maxlength'], ['Min', 'minlength']],
   'number|range|date': ['Max', 'Min', 'Step'],
   file: ['Accept', 'Multiple'],
-  fieldset: ['Max', 'Min'],
+  fieldset: [['Max', 'data-max'], ['Min', 'data-min']],
 }).flatMap(([types, constraintDef]) => types.split('|')
   .map((type) => [type, constraintDef.map((cd) => (Array.isArray(cd) ? cd : [cd, cd]))]));
 
@@ -121,6 +131,9 @@ function createFieldWrapper(fd, tagName = 'div') {
   }
   if (fd.Mandatory.toLowerCase() === 'true') {
     fieldWrapper.dataset.required = '';
+  }
+  if (fd.Hidden?.toLowerCase() === 'true') {
+    fieldWrapper.dataset.hidden = 'true';
   }
   fieldWrapper.classList.add('field-wrapper');
   fieldWrapper.append(createLabel(fd));
@@ -191,8 +204,13 @@ function createRadio(fd) {
 const createOutput = withFieldWrapper((fd) => {
   const output = document.createElement('output');
   output.name = fd.Name;
-  output.dataset.fieldset = fd.Fieldset ? fd.Fieldset : '';
-  output.innerText = fd.Value;
+  output.id = fd.Id;
+  const displayFormat = fd['Display Format'];
+  if (displayFormat) {
+    output.dataset.displayFormat = displayFormat;
+  }
+  const formatFn = formatFns[displayFormat] || ((x) => x);
+  output.innerText = formatFn(fd.Value);
   return output;
 });
 
@@ -211,6 +229,7 @@ function createLegend(fd) {
 
 function createFieldSet(fd) {
   const wrapper = createFieldWrapper(fd, 'fieldset');
+  wrapper.id = fd.Id;
   wrapper.name = fd.Name;
   wrapper.replaceChildren(createLegend(fd));
   if (fd.Repeatable && fd.Repeatable.toLowerCase() === 'true') {
@@ -239,7 +258,7 @@ function createPlainText(fd) {
   return paragraph;
 }
 
-const getId = (function getId() {
+export const getId = (function getId() {
   const ids = {};
   return (name) => {
     ids[name] = ids[name] || 0;
@@ -277,8 +296,22 @@ function renderField(fd) {
   return field;
 }
 
-function decorateFormFields(form) {
-  decorateFieldset(form);
+async function applyTransformation(formDef, form) {
+  try {
+    const mod = await import('./transformer.js');
+    const {
+      default: {
+        transformDOM = () => {},
+        transformRequest,
+      },
+    } = mod;
+    transformDOM(formDef, form);
+    return transformRequest;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.log('no custom decorators found.');
+  }
+  return (req) => req;
 }
 
 async function fetchData(url) {
@@ -310,7 +343,12 @@ async function createForm(formURL) {
     if (input) {
       input.id = fd.Id;
       input.name = fd.Name;
-      input.value = fd.Value;
+      if (input.type !== 'file') {
+        input.value = fd.Value;
+        if (input.type === 'radio' || input.type === 'checkbox') {
+          input.checked = fd.Checked === 'true';
+        }
+      }
       if (fd.Description) {
         input.setAttribute('aria-describedby', `${fd.Id}-description`);
       }
@@ -318,14 +356,14 @@ async function createForm(formURL) {
     form.append(el);
   });
   groupFieldsByFieldSet(form);
+  const transformRequest = await applyTransformation(data, form);
   // eslint-disable-next-line prefer-destructuring
-  form.dataset.action = pathname.split('.json')[0];
+  form.dataset.action = pathname?.split('.json')[0];
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     e.submitter.setAttribute('disabled', '');
-    handleSubmit(form);
+    handleSubmit(form, transformRequest);
   });
-  decorateFormFields(form);
   return form;
 }
 
