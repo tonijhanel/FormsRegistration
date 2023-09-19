@@ -36,9 +36,9 @@ export async function transformCaptchaRequest(request) {
     if (grecaptcha) {
       grecaptcha.ready(() => {
         grecaptcha.execute(SITE_KEY, { action: 'submit' }).then(async (token) => {
-          const newbody = {
-            data: JSON.parse(body).data,
-            token,
+          const newbody = { 
+            ...JSON.parse(body).data,
+            'g-recaptcha-response' : token,
           };
           resolve({
             body: JSON.stringify(newbody),
