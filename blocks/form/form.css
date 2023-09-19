@@ -45,10 +45,16 @@
     --form-upload-background-color: var(--mt-global-color-base-primary);
     --form-submit-width: 100%;
     --form-width: 100%;
-    --form-select-first_background: green;
-    --form-box-shadow: #ebebeb;
-    --form-input-font-weight: 700;
+}
 
+form output {
+    display: block;
+    font-weight: 700;
+    font-size: 1.625rem;
+}
+
+form [data-hidden="true"] {
+    display: none !important;
 }
 
 main .form-container {
@@ -93,18 +99,6 @@ main .form input, main .form textarea, main .form select {
     padding: var(--form-input-padding);
     font-size: var(--form-input-font-size);
     max-width: unset;
-    box-shadow: 1px 1px 4px var(--form-box-shadow);
-    box-sizing: border-box;
-	-webkit-box-sizing: border-box;
-	-moz-box-sizing: border-box;
-}
-
-main .form input:focus{
-    background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);
-
-    outline: none !important;
- 
-
 }
 
 main .form input[type='file'] {
@@ -136,14 +130,6 @@ main .form fieldset legend {
     width: 100%;
     padding: var(--form-fieldset-legend-padding);
     margin-bottom: 10px;
-}
-
-main .form input{
-    font-weight: var(--form-input-font-weight);
-}
-
-main .form select{
-    font-weight: var(--form-input-font-weight);
 }
 
 main .innovate form > fieldset > legend {
@@ -227,6 +213,28 @@ main .form button:disabled {
     background-color: var(--form-input-disable-color);
 }
 
+main .form-file-wrapper input[type="file"] {
+    display: none;
+}
+
+main .form-file-wrapper .field-dropregion {
+    background: rgb(0 0 0 / 2%);
+    border: 1px dashed var(--mt-global-color-silver);
+    border-radius: 4px;
+    margin: 11px 0 8px;
+    padding: 32px;
+    text-align: center;
+}
+
+main .form-file-wrapper .file-description button {
+    --form-button-padding: 15px;
+
+    background: url('/icons/delete.svg') no-repeat;
+    width: unset;
+    border: unset;
+    text-align: center;
+}
+
 @media (min-width: 576px) {
     :root {
         --form-width: 540px;
@@ -276,5 +284,3 @@ main form .form-fieldset-wrapper {
         gap: 10px 15px;
     }
 }
-
-
